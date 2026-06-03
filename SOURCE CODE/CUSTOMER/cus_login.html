@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Account</title>
+    <link rel="stylesheet" href="login_style.css">
+
+</head>
+<body>
+    <!-- Login Container -->
+    <div class="login-container">
+        <div class="login-header">
+           <h1>Login Your Account</h1>
+        </div>
+
+        <form>
+            <!-- Email Address -->
+            <div class="form-group">
+                <label for="email">Email Address:</label>
+                <input type="email" id="email" 
+                name="email" placeholder="abc@email.com" required>
+            </div>
+
+            <!-- Password -->
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <div class="password-wrapper">
+                    <input type="password" id="password"
+                     name="password" placeholder="Enter your password" required>
+                    
+                    <button type="button" id="togglePassword" 
+                    class = "toggle-btn">👁️</button>
+                </div>
+            </div>
+            <input type="submit" value="Login" class = "login-btn">
+        </form>
+
+        <footer>
+            <p>Don't have an account? 
+                <a href="cus_Signup.html">Sign Up</a>
+            </p>
+
+            <p style = "text-align: center; margin-top: 20px;text-decoration: underline; text-decoration-color: blue;">
+                <a href="cus_main_interface.html">Back to Home</a>
+            </p>
+        </footer>
+    </div>
+
+    <script src = cus_login.js></script>
+
+</body>
+
+</html>

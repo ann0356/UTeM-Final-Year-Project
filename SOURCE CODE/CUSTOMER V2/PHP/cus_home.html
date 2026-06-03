@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LAYOUT OF WEBSITE</title> 
+    <link rel="stylesheet" href="../CSS/cus_layout_template.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@100..900&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    
+</head>
+
+<body>
+    <header>
+        <!-- Header Content --company info & customer options-->
+        <!-- Left Panel -->
+        <div class = "left-panel">
+            <!-- logo, redirect to home page-->
+            <div class = "ruma-logo">
+                <a href="cus_home.html">
+                    <img src="../../../USED PICTURE/Ruma_Logo_black.png" alt="Logo.png">
+                </a> 
+            </div>
+
+            <!-- Menu -->
+            <ul class = "menu">
+                <!-- redirect to information pages -->
+                <li><a href ="cus_aboutUs.html">About Us</a></li>
+                <li><a href ="cus_storeLocation.html">Store Locations</a></li>
+                <li><a href ="cus_contactUs.html">Contact Us</a></li>
+            </ul>
+        </div>
+
+        <!-- right panel -->
+        <div class = "right-panel">
+            <!-- search function -->
+             <div class = "search-container">
+                    <button class = "search-icon">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </button>
+
+                    <div class = "search-panel">
+                        <input type="text" 
+                        id = "search-input" 
+                        placeholder = "Search for products...">
+                    
+                        <button class = "search-icon">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </button>
+                    </div> 
+            </div>           
+
+            <!-- user account -->
+            <div class = "user-account">
+                <a href="#">
+                    <i class="fa-regular fa-user"></i>
+                </a>
+
+                <!-- register and login dropdown menu -->
+                <div class = "dropdown-options">
+                    <a href="cus_register.html">Create an Account </a>
+                    <a href="cus_login.html">Login</a>
+                </div>
+            </div>
+
+            <!-- shopping cart -->
+            <div class = "shopping-cart">
+                <a href="cus_cart.html">
+                    <i class="fa-solid fa-cart-arrow-down"></i>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <nav>
+        <!-- submenu -- categories of products -->
+        <ul class = "product-categories">
+            <li class = "category">
+                <a href="cus_living.html">Living</a>
+                <div class = "dropdown-content">
+                    <a href="cus_cat_sofa.html">Sofa</a>
+                </div>
+            </li>
+
+            <li class = "category">
+                <a href="cus_dining.html">Dining</a>
+                <div class = "dropdown-content">
+                    <a href="cus_cat_diningTable.html">Dining Table</a>
+                    <a href="cus_cat_diningChair.html">Dining Chair</a>
+                </div>
+            </li>
+        </ul>
+    </nav>
+
+    <main>
+        <!-- main content -->   
+    </main>
+
+    <script src= "../JS/cus_global_script.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
