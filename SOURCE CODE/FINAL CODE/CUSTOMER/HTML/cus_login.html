@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title> 
+ <!-- logo on browser tab -->
+     <link rel="icon" type="image/png" href="https://dzgtfwdqfqecetnfhcdi.supabase.co/storage/v1/object/public/furniture-images/ruma_logo_white.png">
+    <link rel="stylesheet" href="../CSS/cus_login.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Roboto+Slab:wght@100..900&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+</head>
+
+<body>
+    <div class = "login-container">
+        <!-- header -->
+        <div class = "login-header">
+            <div class = "back-button">
+                <a href = "cus_index.html">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </a>
+            </div>
+            
+            <div class = "ruma-logo">
+                <img src="https://dzgtfwdqfqecetnfhcdi.supabase.co/storage/v1/object/public/furniture-images/Ruma_Logo_black.png" alt="Logo.png">
+            </div>         
+        </div>
+
+        <!-- email and password -->
+         <div class = "data-insert-area">
+            <label for = "email">Email:</label>
+            <input type = "email" class = "data" id = "email" placeholder="Enter your email." required>
+
+            <label for = "password">Password:</label> 
+            <input type = "password" class = "data" id = "password" placeholder="Enter your Password." required>
+         </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <div style="display: flex; gap:5px; align-items: center;">
+                <input type="checkbox" class="check-box" id="toggle-password">
+                <label for="toggle-password" style="margin-bottom: 0;">Show Password</label>
+            </div>
+           <a href="cus_reset_password.html" style="font-size: 13px; color: #3b82f6;">Forgot Password?</a>
+        </div>
+
+        <div style = "display: flex; justify-content: center;">
+            <!-- login button -->
+            <button type = "button" id = "login-btn" class = "login-btn">Login</button>
+        </div>
+
+        <nav>
+            <p>Haven't create an acount?</p>
+            <a href = "cus_reg.html">Sign Up Now</a>
+        </nav>
+         
+    </div>
+
+    <script type = "module" src = "../JS/cus_login.js"></script>
+</body>
+</html>

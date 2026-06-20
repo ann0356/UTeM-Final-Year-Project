@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+     <!-- logo on browser tab -->
+    <link rel = "icon" type = "image/png" href = "https://dzgtfwdqfqecetnfhcdi.supabase.co/storage/v1/object/public/furniture-images/ruma_logo_white.png">
+    <title>Admin Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Roboto+Slab:wght@100..900&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../CSS/admin_index.css">
+
+    <!-- chart, pdf export, 3D view -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
+</head>
+
+<body style = "display: none;">
+    <!-- Header -->
+    <header>
+        <div class="logo">AdminHub</div>
+
+        <!-- log out button -->
+        <div class="header-right" style="margin-left: auto;">
+            <button id="logout-btn" class="btn-primary" style="padding: 8px 16px; background: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                Logout
+            </button>
+        </div>
+
+    </header>
+
+    <div class="container">
+        <!-- Sidebar -->
+        <aside>
+            <div class="menu-group">
+                <!-- change href -->
+                <div class="menu-title">Core Function</div>
+                <a href="#" class="menu-item active" data-page="dashboard">
+                    <span>📊</span> Dashboard
+                </a>
+                <a href="#" class="menu-item" data-page="products">
+                    <span>📦</span> Furniture Management
+                </a>
+                <a href="#" class="menu-item" data-page="orders">
+                    <span>📋</span> Order Management
+                </a>
+                <a href="#" class="menu-item" data-page="customer_feedback">
+                    <span>💬</span> Customer Feedback
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main id = "main-content">
+            
+        </main>
+    </div>
+
+    <script type = "module" src = "../JS/admin_index.js"></script>
+</body>
+</html>

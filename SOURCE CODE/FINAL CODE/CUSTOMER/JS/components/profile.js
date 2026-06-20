@@ -1,0 +1,279 @@
+import { _supabase } from '../../../SUPABASE/supabase_customer_conn.js';
+import { loadCustomerContent } from '../script.js';
+
+let currentUserInfo = null;
+let allOrders = [];
+
+export async function initProfile(params) {
+    console.log("Initializing Profile Page...");
+
+    try {
+        // 1. 验证用户登录状态
+        const { data: { session } } = await _supabase.auth.getSession();
+        if (!session) {
+            alert("Please login to view your profile.");
+            loadCustomerContent('login');
+            return;
+        }
+        
+        const userId = session.user.id;
+
+        // 2. 获取并渲染个人资料
+        await fetchAndRenderProfile(userId);
+
+        // 3. 绑定更新按钮事件
+        document.getElementById('btn-update-profile').onclick = () => updateProfile(userId);
+
+        // 4. 获取并分类渲染订单列表
+        await fetchOrders(userId);
+
+        // 5. 绑定订单 Tabs 切换事件
+        bindOrderTabs();
+
+    } catch (err) {
+        console.error("Profile Load Error:", err);
+        alert("Failed to load profile details.");
+    }
+}
+
+// ==========================================
+// 👤 个人资料管理
+// ==========================================
+async function fetchAndRenderProfile(userId) {
+    const { data, error } = await _supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+    if (error) throw error;
+    currentUserInfo = data;
+
+    // 填充表单
+    document.getElementById('prof-email').value = data.email || '';
+    document.getElementById('prof-fname').value = data.first_name || '';
+    document.getElementById('prof-lname').value = data.last_name || '';
+    document.getElementById('prof-phone').value = data.phone || '';
+    document.getElementById('prof-address').value = data.address || '';
+}
+
+async function updateProfile(userId) {
+    const btn = document.getElementById('btn-update-profile');
+    const fName = document.getElementById('prof-fname').value.trim();
+    const lName = document.getElementById('prof-lname').value.trim();
+    const phone = document.getElementById('prof-phone').value.trim();
+    const address = document.getElementById('prof-address').value.trim();
+
+    if (!fName || !lName || !phone || !address) {
+        alert("Please fill up all fields.");
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerText = "Updating...";
+
+    const { error } = await _supabase
+        .from('profiles')
+        .update({
+            first_name: fName,
+            last_name: lName,
+            phone: phone,
+            address: address
+        })
+        .eq('id', userId);
+
+    btn.disabled = false;
+
+    if (error) {
+        console.error("Update error:", error);
+        alert("Failed to update profile.");
+        btn.innerText = "Update Profile";
+    } else {
+        btn.style.background = "#2ecc71";
+        btn.innerText = "Updated Successfully!";
+        setTimeout(() => {
+            btn.style.background = "#1e2937";
+            btn.innerText = "Update Profile";
+        }, 2000);
+    }
+}
+
+// ==========================================
+// 📦 订单抓取与渲染 (核心：还原 Snapshot 快照)
+// ==========================================
+async function fetchOrders(userId) {
+    // 联表查询 orders 和 旗下的 order_item
+    const { data: orders, error } = await _supabase
+        .from('orders')
+        .select(`
+            order_id, created_at, total_amount, status,
+            order_item ( order_item_id, unit_price, quantity, subtotal, snapshot_info )
+        `)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error("Fetch orders error:", error);
+        document.getElementById('orders-container').innerHTML = `<p style="color:red;">Failed to load orders.</p>`;
+        return;
+    }
+
+    allOrders = orders || [];
+    renderOrdersList('active'); // 默认展示 Active Orders
+}
+
+function renderOrdersList(viewType) {
+    const container = document.getElementById('orders-container');
+    container.innerHTML = '';
+
+    // 过滤逻辑：Active (order placed) vs History (cancelled / delivered)
+    const filteredOrders = allOrders.filter(o => {
+        const status = (o.status || '').toLowerCase();
+        if (viewType === 'active') {
+            return status === 'order placed';
+        } else {
+            return status === 'cancelled' || status === 'delivered';
+        }
+    });
+
+    if (filteredOrders.length === 0) {
+        container.innerHTML = `<div style="text-align: center; padding: 40px; color: #94a3b8; background: white; border-radius: 12px; border: 1px dashed #cbd5e1;">
+            <i class="fa-solid fa-box-open" style="font-size: 40px; margin-bottom: 10px; color: #cbd5e1;"></i>
+            <p>No ${viewType} orders found.</p>
+        </div>`;
+        return;
+    }
+
+    filteredOrders.forEach(order => {
+        // 状态徽章颜色
+        let statusColor = "#3b82f6"; // 默认蓝色
+        if (order.status.toLowerCase() === 'delivered') statusColor = "#2ecc71"; // 绿
+        if (order.status.toLowerCase() === 'cancelled') statusColor = "#e74c3c"; // 红
+
+        const formattedDate = new Date(order.created_at).toLocaleDateString('en-MY', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+        // 生成这个订单下的商品 HTML (读取 snapshot_info)
+        let itemsHtml = '';
+        order.order_item.forEach(item => {
+            const snap = item.snapshot_info || {};
+            itemsHtml += `
+                <div style="display: flex; gap: 15px; margin-top: 15px; align-items: center; background: #f8fafc; padding: 10px; border-radius: 8px;">
+                    <img src="${snap.image || '../IMAGES/placeholder.png'}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid #e2e8f0;">
+                    <div style="flex-grow: 1;">
+                        <h4 style="margin: 0 0 4px 0; font-size: 14px; color: #1e2937;">${snap.name || 'Unknown Item'}</h4>
+                        <p style="margin: 0; font-size: 12px; color: #64748b;">Variant: ${snap.variant} • ${snap.colour}</p>
+                    </div>
+                    <div style="text-align: right; font-size: 13px; color: #475569;">
+                        RM ${Number(item.unit_price).toFixed(2)} x ${item.quantity}
+                    </div>
+                </div>
+            `;
+        });
+
+        // 🌟 动态生成“取消按钮”：只有在 Active 状态 (order placed) 才会出现
+        let actionBtnHtml = '';
+        if (order.status.toLowerCase() === 'order placed') {
+            actionBtnHtml = `
+                <button class="btn-cancel-order" data-id="${order.order_id}" style="margin-top: 10px; padding: 6px 12px; background: transparent; color: #e74c3c; border: 1px solid #e74c3c; border-radius: 6px; font-size: 12px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#e74c3c'; this.style.color='white';" onmouseout="this.style.background='transparent'; this.style.color='#e74c3c';">
+                    Cancel Order
+                </button>
+            `;
+        }
+
+        // 拼接整个订单卡片
+        const orderCard = document.createElement('div');
+        orderCard.style.cssText = "background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);";
+        orderCard.innerHTML = `
+            <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed #e2e8f0; padding-bottom: 10px;">
+                <div>
+                    <p style="margin: 0 0 5px 0; font-size: 12px; color: #64748b;">Order ID: ${order.order_id}</p>
+                    <p style="margin: 0; font-size: 13px; color: #475569;"><i class="fa-regular fa-clock"></i> ${formattedDate}</p>
+                </div>
+                <div style="text-align: right;">
+                    <span style="display: inline-block; padding: 4px 10px; background: ${statusColor}15; color: ${statusColor}; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase;">
+                        ${order.status}
+                    </span>
+                    <p style="margin: 5px 0 0 0; font-size: 16px; font-weight: bold; color: #1e2937;">Total: RM ${Number(order.total_amount).toFixed(2)}</p>
+                    ${actionBtnHtml}
+                </div>
+            </div>
+            <div>
+                ${itemsHtml}
+            </div>
+        `;
+        container.appendChild(orderCard);
+    });
+
+    // 🌟 为所有刚刚生成的 Cancel 按钮绑定点击事件
+    const cancelBtns = document.querySelectorAll('.btn-cancel-order');
+    cancelBtns.forEach(btn => {
+        btn.addEventListener('click', handleCancelOrder);
+    });
+}
+
+// ==========================================
+// 🖱️ Tabs 切换逻辑
+// ==========================================
+function bindOrderTabs() {
+    const tabActive = document.getElementById('tab-active');
+    const tabHistory = document.getElementById('tab-history');
+
+    const setActiveStyle = (activeBtn, inactiveBtn) => {
+        activeBtn.style.color = "#3b82f6";
+        activeBtn.style.borderBottom = "3px solid #3b82f6";
+        inactiveBtn.style.color = "#64748b";
+        inactiveBtn.style.borderBottom = "3px solid transparent";
+    };
+
+    tabActive.onclick = () => {
+        setActiveStyle(tabActive, tabHistory);
+        renderOrdersList('active');
+    };
+
+    tabHistory.onclick = () => {
+        setActiveStyle(tabHistory, tabActive);
+        renderOrdersList('history');
+    };
+}
+
+// ==========================================
+// ❌ 取消订单功能
+// ==========================================
+async function handleCancelOrder(event) {
+    const btn = event.target;
+    const orderId = btn.getAttribute('data-id');
+
+    // 增加弹窗确认，防止误触
+    if (!confirm("Are you sure you want to cancel this order? This action cannot be undone.")) {
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerText = "Cancelling...";
+
+    try {
+        // 让 Supabase 更新这个订单的状态
+        const { error } = await _supabase
+            .from('orders')
+            .update({ status: 'cancelled' })
+            .eq('order_id', orderId);
+
+        if (error) throw error;
+
+        // 成功反馈
+        alert("Order cancelled successfully.");
+
+        // 🌟 核心：重新获取最新订单数据并刷新页面！
+        const { data: { session } } = await _supabase.auth.getSession();
+        if (session) {
+            await fetchOrders(session.user.id); // 重新去数据库拉一次数据
+            // 此时页面会自动重新渲染，被取消的订单就会瞬间飞到 History 页面去
+        }
+
+    } catch (err) {
+        console.error("Failed to cancel order:", err);
+        alert("An error occurred while cancelling your order. Please try again.");
+        btn.disabled = false;
+        btn.innerText = "Cancel Order";
+    }
+}

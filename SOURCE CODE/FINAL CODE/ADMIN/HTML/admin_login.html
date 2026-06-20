@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administrator</title> 
+ <!-- logo on browser tab -->
+    <link rel = "icon" type = "image/png" href = "https://dzgtfwdqfqecetnfhcdi.supabase.co/storage/v1/object/public/furniture-images/ruma_logo_only.png">
+    <link rel="stylesheet" href="../CSS/admin_login.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Roboto+Slab:wght@100..900&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+</head>
+
+<body>
+    <div class = "login-container">
+        <!-- header -->
+        <div class = "login-header">                 
+            <p class = "title">ADMIN LOGIN</p>
+        </div>
+
+        <!-- email and password -->
+         <div>
+            <!-- avoid auto complete -->
+            <div style="position: absolute; opacity: 0; top: -999px; left: -999px; z-index: -1;">
+                <input type="email" tabindex="-1" aria-hidden="true">
+                <input type="password" tabindex="-1" aria-hidden="true">
+            </div>
+
+            <label for = "email">Email:</label>
+            <input type = "email" class = "data" id = "email" placeholder="Enter your email." required>
+
+            <label for = "password">Password:</label> 
+            <input type = "password" class = "data" id = "password" placeholder="Enter your Password." required>
+         </div>
+
+        <div style="display: flex;gap:5px;">
+            <input type="checkbox" class = "check-box" id="toggle-password">
+            <label for="toggle-password" style = "margin-bottom: 0;">Show Password</label>
+        </div>
+
+        <div style = "display: flex; justify-content: center;">
+            <!-- login button -->
+            <button type = "button" id = "login-btn" class = "login-btn">Login</button>
+        </div>        
+    </div>
+
+    <script type = "module" src = "../JS/admin_login.js"></script>
+</body>
+</html>

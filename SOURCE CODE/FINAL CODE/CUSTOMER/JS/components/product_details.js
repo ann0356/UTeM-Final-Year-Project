@@ -1,0 +1,484 @@
+import { _supabase } from '../../../SUPABASE/supabase_customer_conn.js';
+import { loadCustomerContent } from '../script.js';
+
+let rawVariants = [];         // 存放当前 Furniture 旗下的所有原始 SKU 数据
+let uniqueStructureNames = [];// 款式名字集合 (去重)
+let uniqueColours = [];       // 颜色名字集合 (去重)
+
+let activeStructureName = ''; // 当前选中的款式
+let activeColour = '';        // 当前选中的颜色
+let displayMode = '2d';       // 视图模式 ('2d' 或 '3d')
+
+export async function initProductDetails(params) {
+    console.log("Loading Product Details for Furniture ID:", params.id);
+    
+    displayMode = '2d'; 
+
+    const backBtn = document.getElementById('btn-back-catalog');
+    if (backBtn) {
+        backBtn.onclick = () => loadCustomerContent('home');
+    }
+
+    try {
+        const { data: fur, error } = await _supabase
+            .from('furniture')
+            .select(`
+                furniture_name, description,
+                type!inner ( type_id, type_name, category!inner(category_name) ),
+                structure ( structure_id, structure_name, colour, price, material, length, width, height, image_url, model_url, stock )
+            `)
+            .eq('furniture_id', params.id)
+            .maybeSingle();
+
+        if (error) throw error;
+
+        if (backBtn && fur.type) {
+            backBtn.innerText = `← Back to ${fur.type.type_name}`;
+            backBtn.onclick = () => {
+                loadCustomerContent('product_list', { 
+                    level: 'type', 
+                    id: fur.type.type_id, 
+                    name: fur.type.type_name 
+                });
+            };
+        }
+
+        document.getElementById('pd-category-path').innerText = `${fur.type.category.category_name} / ${fur.type.type_name}`;
+        document.getElementById('pd-title').innerText = fur.furniture_name;
+        document.getElementById('pd-desc').innerText = fur.description || 'Premium craftsmanship design.';
+
+        rawVariants = fur.structure || [];
+        uniqueStructureNames = [...new Set(rawVariants.map(v => (v.structure_name || '').trim()))].filter(Boolean);
+        uniqueColours = [...new Set(rawVariants.map(v => (v.colour || '').trim()))].filter(Boolean);
+
+        uniqueStructureNames.sort();
+        uniqueColours.sort();
+
+        activeStructureName = uniqueStructureNames[0];
+        const defaultMatch = rawVariants.find(v => (v.structure_name || '').trim() === activeStructureName);
+        activeColour = defaultMatch ? (defaultMatch.colour || '').trim() : uniqueColours[0];
+
+        bindViewModeToggles();
+        bind3DAngleControls();
+        
+        // 🌟 初始化数量加减器和灯箱交互
+        bindQuantityControls();
+        bindLightboxControls();
+
+        refreshSelectionPanels();
+
+        const btnAddCart = document.getElementById('btn-add-to-cart');
+        if (btnAddCart) {
+            const newBtn = btnAddCart.cloneNode(true);
+            btnAddCart.parentNode.replaceChild(newBtn, btnAddCart);
+            newBtn.addEventListener('click', handleAddToCart);
+        }
+
+    } catch (err) {
+        console.error("Product details engine crashed:", err);
+        alert("Failed to load product details.");
+    }
+}
+
+// ==========================================
+// 🕹️ 控制台交互按钮渲染
+// ==========================================
+function refreshSelectionPanels() { 
+    renderStructureButtons();
+    renderColourButtons();
+    updateMediaAndPricing();
+    
+    // 每次切换商品重置数量为 1
+    const qtyInput = document.getElementById('pd-quantity');
+    if(qtyInput) qtyInput.value = 1;
+}
+
+function renderStructureButtons() {
+    const container = document.getElementById('container-structures');
+    if (!container) return;
+    container.innerHTML = '';
+
+    uniqueStructureNames.forEach(sName => {
+        const btn = document.createElement('button');
+        btn.innerText = sName;
+        btn.style.cssText = `
+            padding: 8px 16px; border-radius: 4px; cursor: pointer; border: 1px solid #cbd5e1; font-weight: 500; transition: all 0.2s;
+            ${sName === activeStructureName ? 'background: #3b82f6; color: white; border-color: #3b82f6;' : 'background: white; color: #475569;'}
+        `;
+        
+        btn.onclick = () => {
+            activeStructureName = sName;
+            const hasSameColorInNewStruct = rawVariants.some(v => 
+                (v.structure_name || '').trim() === activeStructureName && 
+                (v.colour || '').trim() === activeColour
+            );
+            
+            if (!hasSameColorInNewStruct) {
+                const fallback = rawVariants.find(v => (v.structure_name || '').trim() === activeStructureName);
+                if (fallback) activeColour = (fallback.colour || '').trim();
+            }
+            refreshSelectionPanels();
+        };
+        container.appendChild(btn);
+    });
+}
+
+function renderColourButtons() {
+    const container = document.getElementById('container-colours');
+    if (!container) return;
+    container.innerHTML = '';
+
+    uniqueColours.forEach(cName => {
+        const btn = document.createElement('button');
+        btn.innerText = cName;
+        btn.style.cssText = `
+            padding: 8px 16px; border-radius: 20px; cursor: pointer; border: 1px solid #cbd5e1; font-weight: 500; transition: all 0.2s;
+            ${cName === activeColour ? 'background: #1e2937; color: white; border-color: #1e2937;' : 'background: white; color: #475569;'}
+        `;
+
+        btn.onclick = () => {
+            activeColour = cName;
+            const hasStructInNewColor = rawVariants.some(v => 
+                (v.structure_name || '').trim() === activeStructureName && 
+                (v.colour || '').trim() === activeColour
+            );
+
+            if (!hasStructInNewColor) {
+                const fallback = rawVariants.find(v => (v.colour || '').trim() === activeColour);
+                if (fallback) activeStructureName = (fallback.structure_name || '').trim();
+            }
+            refreshSelectionPanels();
+        };
+        container.appendChild(btn);
+    });
+}
+
+function updateMediaAndPricing() {
+    const exactSKU = rawVariants.find(v => 
+        (v.structure_name || '').trim() === activeStructureName && 
+        (v.colour || '').trim() === activeColour
+    );
+    
+    if (!exactSKU) return;
+
+    document.getElementById('pd-price').innerText = `RM ${Number(exactSKU.price).toFixed(2)}`;
+    
+    const stock = Number(exactSKU.stock || 0);
+    const stockBadge = document.getElementById('pd-stock-badge');
+    if (stockBadge) {
+        if (stock >= 100) stockBadge.innerHTML = `<span style="color:#2ecc71; font-weight:bold;"><i class="fa-solid fa-box-open"></i> In Stock</span>`;
+        else if (stock > 0) stockBadge.innerHTML = `<span style="color:#e67e22; font-weight:bold;">Only ${stock} left</span>`;
+        else stockBadge.innerHTML = `<span style="color:#e74c3c; font-weight:bold;">Out of stock</span>`;
+    }
+
+    const materialBox = document.getElementById('pd-material-content');
+    const dimensionsBox = document.getElementById('pd-dimensions-content');
+
+    if (materialBox) {
+        materialBox.innerHTML = `<strong>Main Material:</strong> ${exactSKU.material || 'Premium Fabric'}`;
+    }
+
+    if (dimensionsBox) {
+        dimensionsBox.innerHTML = `
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                <span><strong>Length:</strong> ${exactSKU.length || 0} cm</span>
+                <span><strong>Width:</strong> ${exactSKU.width || 0} cm</span>
+                <span><strong>Height:</strong> ${exactSKU.height || 0} cm</span>
+            </div>
+        `;
+    }
+
+    const imgElem = document.getElementById('display-image');
+    const modelElem = document.getElementById('display-model');
+    
+    if (imgElem) imgElem.src = exactSKU.image_url || '../IMAGES/placeholder.png';
+    
+ // 👇 🌟 完美同步 Blender Material Preview 设定 👇
+    if (modelElem) {
+        modelElem.src = exactSKU.model_url || '';
+        
+        // 1. 必须移除 neutral！让模型重新获得环境光反射（消除黑屏）
+        modelElem.removeAttribute('environment-image'); 
+        
+        // 2. 匹配 Blender 默认的 Filmic 色彩映射
+        modelElem.setAttribute('tone-mapping', 'aces'); 
+        
+        // 3. Material Preview 的光照比较充足，曝光设为 1.0 或 1.2
+        modelElem.setAttribute('exposure', '1.0'); 
+        
+        // 4. 加上柔和的环境光遮蔽阴影，增加落地感
+        modelElem.setAttribute('shadow-intensity', '1'); 
+        modelElem.setAttribute('shadow-softness', '0.8'); 
+    }
+
+    applyMediaViewMode(exactSKU.model_url);
+}
+// ==========================================
+// 💡 数量选择器 & 灯箱 (Lightbox) 控制
+// ==========================================
+function bindQuantityControls() {
+    const btnMinus = document.getElementById('btn-qty-minus');
+    const btnPlus = document.getElementById('btn-qty-plus');
+    const qtyInput = document.getElementById('pd-quantity');
+    
+    if (btnMinus && btnPlus && qtyInput) {
+        btnMinus.onclick = () => {
+            let val = parseInt(qtyInput.value) || 1;
+            if(val > 1) qtyInput.value = val - 1;
+        };
+        btnPlus.onclick = () => {
+            let val = parseInt(qtyInput.value) || 1;
+            if(val < 99) qtyInput.value = val + 1;
+        };
+        // 防止用户手动输入非法数值
+        qtyInput.onchange = () => {
+            let val = parseInt(qtyInput.value) || 1;
+            if(val < 1) val = 1;
+            if(val > 99) val = 99;
+            qtyInput.value = val;
+        };
+    }
+}
+
+// ==========================================
+// 💡 数量选择器 & 灯箱 (Lightbox) 控制
+// ==========================================
+// ... (保留上方的 bindQuantityControls 不变) ...
+
+function bindLightboxControls() {
+    const mainImg = document.getElementById('display-image');
+    const lightbox = document.getElementById('pd-lightbox');
+    const lightboxImg = document.getElementById('pd-lightbox-img');
+    const closeBtn = document.getElementById('pd-lightbox-close');
+
+    if (mainImg && lightbox && lightboxImg) {
+        
+        // 👇 🌟 核心优化：直接用 JS 强制让放大后的图片占据屏幕的 90%！ 👇
+        lightboxImg.style.maxWidth = '90vw';    // 最大宽度为屏幕宽度的 90%
+        lightboxImg.style.maxHeight = '90vh';   // 最大高度为屏幕高度的 90%
+        lightboxImg.style.objectFit = 'contain';// 保持图片原本比例，绝不拉伸变形
+        lightboxImg.style.borderRadius = '8px'; // 顺便加个圆角，让边缘更好看
+        // 👆 ========================================================= 👆
+
+        mainImg.onclick = () => {
+            if (displayMode === '2d') { // 只有在 2D 图片模式才允许放大
+                lightboxImg.src = mainImg.src;
+                lightbox.style.display = 'flex';
+                lightbox.style.alignItems = 'center';    // 确保绝对居中
+                lightbox.style.justifyContent = 'center';// 确保绝对居中
+            }
+        };
+
+        const closeLightbox = () => lightbox.style.display = 'none';
+
+        if (closeBtn) closeBtn.onclick = closeLightbox;
+        
+        lightbox.onclick = (e) => {
+            // 确保点击图片本身不会关闭，只有点击黑底才会关闭
+            if (e.target === lightbox) closeLightbox(); 
+        };
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && lightbox.style.display === 'flex') closeLightbox();
+        });
+    }
+}
+
+// ==========================================
+// 📺 3D 核心：角度操控引擎与 Toggle 样式渲染
+// ==========================================
+function bindViewModeToggles() {
+    const btn2d = document.getElementById('btn-mode-2d');
+    const btn3d = document.getElementById('btn-mode-3d');
+
+    if (btn2d && btn3d) {
+        btn2d.onclick = () => { displayMode = '2d'; updateMediaAndPricing(); };
+        btn3d.onclick = () => { displayMode = '3d'; updateMediaAndPricing(); };
+    }
+}
+
+function bind3DAngleControls() {
+    const modelViewer = document.getElementById('display-model');
+    const btnFront = document.getElementById('btn-angle-front');
+    const btnSide = document.getElementById('btn-angle-side');
+    const btnTop = document.getElementById('btn-angle-top');
+
+    if (!modelViewer) return;
+
+    const highlightAngleBtn = (activeBtn) => {
+        [btnFront, btnSide, btnTop].forEach(btn => {
+            if (btn === activeBtn) {
+                btn.style.background = "#1e2937"; btn.style.color = "white";
+            } else {
+                btn.style.background = "white"; btn.style.color = "#475569";
+            }
+        });
+    };
+
+    if (btnFront) btnFront.onclick = () => { modelViewer.cameraOrbit = "0deg 75deg auto"; highlightAngleBtn(btnFront); };
+    if (btnSide) btnSide.onclick = () => { modelViewer.cameraOrbit = "90deg 75deg auto"; highlightAngleBtn(btnSide); };
+    if (btnTop) btnTop.onclick = () => { modelViewer.cameraOrbit = "0deg 0deg auto"; highlightAngleBtn(btnTop); };
+}
+
+function applyMediaViewMode(currentModelUrl) {
+    const btn2d = document.getElementById('btn-mode-2d');
+    const btn3d = document.getElementById('btn-mode-3d');
+    const imgElem = document.getElementById('display-image');
+    const modelElem = document.getElementById('display-model');
+    const warningElem = document.getElementById('media-warning');
+    
+    const anglesPanel = document.getElementById('pd-view-angles-panel');
+    const instructionPanel = document.getElementById('pd-3d-instructions');
+
+    if (warningElem) warningElem.style.display = 'none';
+
+    if (displayMode === '2d') {
+        if (btn2d) { btn2d.style.background = "white"; btn2d.style.boxShadow = "0 1px 3px rgba(0,0,0,0.1)"; btn2d.style.color = "#1e2937"; }
+        if (btn3d) { btn3d.style.background = "transparent"; btn3d.style.boxShadow = "none"; btn3d.style.color = "#64748b"; }
+        
+        if (imgElem) imgElem.style.display = 'block';
+        if (modelElem) modelElem.style.display = 'none';
+        
+        if (anglesPanel) anglesPanel.style.display = 'none';
+        if (instructionPanel) instructionPanel.style.display = 'none';
+        
+    } else if (displayMode === '3d') {
+        if (btn3d) { btn3d.style.background = "white"; btn3d.style.boxShadow = "0 1px 3px rgba(0,0,0,0.1)"; btn3d.style.color = "#1e2937"; }
+        if (btn2d) { btn2d.style.background = "transparent"; btn2d.style.boxShadow = "none"; btn2d.style.color = "#64748b"; }
+        
+        if (imgElem) imgElem.style.display = 'none';
+        
+        if (!currentModelUrl) {
+            if (modelElem) modelElem.style.display = 'none';
+            if (anglesPanel) anglesPanel.style.display = 'none';
+            if (instructionPanel) instructionPanel.style.display = 'none';
+            
+            if (warningElem) {
+                warningElem.innerText = "⚠️ 3D Model not available for this variant.";
+                warningElem.style.display = 'block';
+            }
+        } else {
+            if (modelElem) modelElem.style.display = 'block';
+            if (anglesPanel) anglesPanel.style.display = 'flex';
+            if (instructionPanel) instructionPanel.style.display = 'block';
+            
+            const btnFront = document.getElementById('btn-angle-front');
+            if (modelElem && btnFront) {
+                modelElem.cameraOrbit = "0deg 75deg auto";
+                [btnFront, document.getElementById('btn-angle-side'), document.getElementById('btn-angle-top')].forEach(b => {
+                    if (b === btnFront) { b.style.background = "#1e2937"; b.style.color = "white"; }
+                    else { b.style.background = "white"; b.style.color = "#475569"; }
+                });
+            }
+        }
+    }
+}
+
+// ==========================================
+// 🛒 购物车引擎：处理加入购物车逻辑 (带数量提取)
+// ==========================================
+async function handleAddToCart() {
+    try {
+        const { data: { session }, error: sessionError } = await _supabase.auth.getSession();
+        
+        if (sessionError || !session) {
+            alert("Please login first to add items to your cart.");
+            window.location.href = "cus_login.html"; 
+            return;
+        }
+
+        const userId = session.user.id;
+
+        const exactSKU = rawVariants.find(v => 
+            (v.structure_name || '').trim() === activeStructureName && 
+            (v.colour || '').trim() === activeColour
+        );
+
+        if (!exactSKU) {
+            alert("Please select a valid product variation.");
+            return;
+        }
+
+        // 🌟 提取用户选择的数量
+        const qtyInput = document.getElementById('pd-quantity');
+        const qtyToAdd = parseInt(qtyInput ? qtyInput.value : 1) || 1;
+
+        if (Number(exactSKU.stock) < qtyToAdd) {
+            alert(`Sorry, we only have ${exactSKU.stock} in stock.`);
+            return;
+        }
+
+        const btn = document.getElementById('btn-add-to-cart');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="color:white; margin-right:8px;"></i> Adding...';
+        btn.disabled = true;
+
+        let cartId;
+        let { data: cartData, error: cartError } = await _supabase
+            .from('cart')
+            .select('cart_id')
+            .eq('user_id', userId)
+            .maybeSingle();
+
+        if (cartError && cartError.code === 'PGRST116') {
+            cartId = 'CART-' + Date.now(); 
+            const { error: insertCartError } = await _supabase
+                .from('cart')
+                .insert([{ cart_id: cartId, user_id: userId }]);
+            if (insertCartError) throw insertCartError;
+        } else if (cartError) {
+            throw cartError;
+        } else {
+            cartId = cartData.cart_id;
+        }
+
+        const { data: existingItem, error: checkItemError } = await _supabase
+            .from('cart_item')
+            .select('cart_item_id, quantity')
+            .eq('cart_id', cartId)
+            .eq('structure_id', exactSKU.structure_id)
+            .is('room_item_id', null) 
+            .maybeSingle();
+
+        if (checkItemError && checkItemError.code !== 'PGRST116') {
+            throw checkItemError;
+        }
+
+        if (existingItem) {
+            // 🌟 累加用户选择的数量
+            const newQty = Number(existingItem.quantity) + qtyToAdd;
+            const { error: updateError } = await _supabase
+                .from('cart_item')
+                .update({ quantity: newQty, updated_at: new Date().toISOString() })
+                .eq('cart_item_id', existingItem.cart_item_id);
+            if (updateError) throw updateError;
+        } else {
+            const cartItemId = 'CITEM-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+            const { error: insertItemError } = await _supabase
+                .from('cart_item')
+                .insert([{ 
+                    cart_item_id: cartItemId, 
+                    cart_id: cartId, 
+                    structure_id: exactSKU.structure_id,
+                    quantity: qtyToAdd // 🌟 存入用户指定的数量
+                }]);
+            if (insertItemError) throw insertItemError;
+        }
+
+        btn.style.background = "#2ecc71"; 
+        btn.innerHTML = `<i class="fa-solid fa-check" style="color:white; margin-right:8px;"></i> Added ${qtyToAdd} to Cart!`;
+        
+        setTimeout(() => {
+            btn.style.background = "#1e2937";
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }, 2000);
+
+    } catch (error) {
+        console.error("Add to cart error:", error);
+        alert("Failed to add item to cart. Please try again.");
+        const btn = document.getElementById('btn-add-to-cart');
+        btn.innerHTML = '<i class="fa-solid fa-cart-plus" style="color:white; margin-right:8px;"></i> Add to Cart';
+        btn.disabled = false;
+    }
+}

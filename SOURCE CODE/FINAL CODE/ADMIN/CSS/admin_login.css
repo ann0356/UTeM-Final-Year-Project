@@ -1,0 +1,90 @@
+    *{
+            padding: 0px;
+            margin: 0px;
+            box-sizing: border-box;
+        }
+
+        body{
+            font-family: "Inter", sans-serif;
+            background: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-width: 400px;
+            min-height: 100vh;
+        }
+
+        .login-container{
+            background: white;
+            padding: 30px;
+            align-items: center;
+            
+            border: black 1px solid;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+
+            width: 100%;
+            max-width: 500px;
+            min-width: 400px;
+            height: 100%;
+        }
+
+        .login-header{
+            display: block;
+            position: relative;
+
+            margin-bottom: 20px;
+            
+            padding-bottom: 20px;
+            border-bottom: gray 1px solid;
+        }
+
+        .title{
+            display: flex;
+            justify-content: center;
+            margin-top: 5px;
+            font-size: 30px;
+            font-weight: bold;
+        }
+
+        label{
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .data{
+            width:100%;
+            padding: 14px 16px;
+            margin:10px 0px;
+            border: 2px solid #e1e1e1;
+            border-radius: 20px;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        .check-box{
+            margin-left: 10px;
+        }
+
+        .login-btn{
+            background-color: lightgray;
+            color:black;
+            padding: 10px 15px;
+            margin: 10px;
+            cursor:pointer;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            align-items: center;
+        }
+
+        .login-btn:hover{
+            background-color: gray;
+            color:white;
+        }
+
+        .login-btn:active{
+            background-color: lightgray;
+            color:black;
+        }

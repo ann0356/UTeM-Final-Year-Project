@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register | Ruma Furniture</title> 
+    <link rel="icon" type="image/png" href="https://dzgtfwdqfqecetnfhcdi.supabase.co/storage/v1/object/public/furniture-images/ruma_logo_white.png">
+    <link rel="stylesheet" href="../CSS/cus_reg.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Roboto+Slab:wght@100..900&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+</head>
+
+<body>
+    <div class="signup-container">
+        <div class="signup-header">
+            <div class="back-button">
+                <a href="cus_index.html" aria-label="Back to Home">
+                    <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                </a>
+            </div>
+            
+            <div class="ruma-logo">
+                <img src="https://dzgtfwdqfqecetnfhcdi.supabase.co/storage/v1/object/public/furniture-images/Ruma_Logo_black.png" alt="Ruma Furniture Logo">
+            </div>         
+        </div>
+
+        <form id="register-form">
+            <div class="user-name">
+                <div class="first_name">
+                    <label for="first_name">First Name:</label>
+                    <input type="text" class="info" id="first_name" placeholder="First Name" required autocomplete="given-name">
+                </div>
+
+                <div class="last_name">
+                    <label for="last_name">Last Name:</label>
+                    <input type="text" class="info" id="last_name" placeholder="Last Name" required autocomplete="family-name">
+                </div>       
+            </div>
+
+            <label for="email">Email Address:</label>
+            <input type="email" class="info" id="email" placeholder="abc@gmail.com" required autocomplete="email">
+
+            <label for="phone">Phone Number:</label>
+            <input type="tel" class="info" id="phone" placeholder="012345678" required autocomplete="tel">
+
+            <label for="home_address">Home Address:</label>
+            <input type="text" class="info" id="home_address" placeholder="1, Jalan Bunga 1, Taman Mewah, 81300, Skudai, Johor" required autocomplete="street-address">
+
+            <label for="password">Password:
+                <span style="font-size: 11px; color: gray; display: block; margin-top: 4px; font-weight: normal;">
+                    (At least 8 characters, must include special symbols +@_%!-)
+                </span>
+            </label>
+            <input type="password" class="info" id="password" placeholder="e.g. Abc@1234" required minlength="8" pattern=".*[+@_%!\-].*" autocomplete="new-password">
+
+            <label for="confirm_password">Confirm Password:</label> 
+            <input type="password" class="info" id="confirm_password" placeholder="Confirm Password" required minlength="8" autocomplete="new-password">
+
+            <div style="display: flex; gap: 5px; align-items: center; margin-top: 10px;">
+                <input type="checkbox" class="check-box" id="toggle-password">
+                <label for="toggle-password" style="margin-bottom: 0; font-size: 14px; font-weight: normal; cursor: pointer;">Show Password</label>
+            </div>
+
+            <div style="display: flex; justify-content: center; margin-top: 25px;">
+                <button type="submit" id="signup-btn" class="signUp-btn">Sign Up</button>
+            </div>
+        </form>
+
+        <div style="text-align: center; margin-top: 20px; font-size: 14px;">
+            <p style="color: #64748b; margin-bottom: 5px;">Already have an account?</p>
+            <a href="cus_login.html" style="color: #3b82f6; text-decoration: none; font-weight: bold;">Sign In Now</a>
+        </div>
+         
+    </div>
+
+    <script type="module" src="../JS/cus_reg.js"></script>
+</body>
+</html>

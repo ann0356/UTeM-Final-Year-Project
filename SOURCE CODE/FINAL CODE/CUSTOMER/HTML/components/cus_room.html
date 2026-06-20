@@ -1,0 +1,169 @@
+<style>
+  /* ── Reset scoped to planner ── */
+  .rp-root *, .rp-root *::before, .rp-root *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  .rp-root { font-family: 'Inter', system-ui, sans-serif; font-size: 14px; color: #1e293b; }
+
+  /* ── Layout ── */
+  .rp-root          { display: flex; flex-direction: column; height: 85vh; background: #f8fafc; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0; }
+  .rp-topbar        { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 18px; background: #ffffff; border-bottom: 1px solid #e2e8f0; flex-shrink: 0; }
+  
+  /* ── 整个下半部容器：如果内容超出，允许出现横向滚动条保护画布 ── */
+  .rp-body          { display: flex; flex: 1; overflow-x: auto; overflow-y: hidden; }
+
+  /* ── 画布包裹列：严格控制占用屏幕 70%，并设有最小宽度 ── */
+  .rp-canvas-wrap   { flex: 0 0 70%; width: 70%; min-width: 600px; display: flex; flex-direction: column; overflow: hidden; }
+  
+  /* ── 画布本身：居中显示并附带精美留白阴影 ── */
+  .rp-canvas        { flex: 1; background: #e2e8f0; position: relative; margin: 15px 20px 20px 20px; border-radius: 12px; border: 1px solid #cbd5e1; box-shadow: 0 4px 10px rgba(0,0,0,0.05); overflow: hidden; }
+  .rp-canvas canvas { display: block; width: 100% !important; height: 100% !important; }
+  
+  /* ── 剩余的 30% 留给侧边栏，同样设有最小宽度保护 ── */
+  .rp-sidebar       { flex: 0 0 30%; width: 30%; min-width: 280px; display: flex; flex-direction: column; background: #ffffff; border-left: 1px solid #e2e8f0; overflow: hidden; }
+
+  /* ── Top bar groups ── */
+  .rp-group         { display: flex; align-items: center; gap: 8px; }
+  .rp-divider       { width: 1px; height: 28px; background: #e2e8f0; flex-shrink: 0; }
+  .rp-label         { font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+
+  /* ── Inputs & Buttons ── */
+  .rp-input         { padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; color: #1e293b; background: #f8fafc; width: 90px; transition: border-color .15s; }
+  .rp-input:focus   { outline: none; border-color: #3b82f6; }
+  .rp-select        { padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; color: #1e293b; background: #f8fafc; cursor: pointer; }
+  .rp-btn           { display: inline-flex; align-items: center; gap: 6px; padding: 6px 13px; font-size: 13px; font-weight: 600; border: none; border-radius: 7px; cursor: pointer; transition: filter .15s, transform .1s; white-space: nowrap; }
+  .rp-btn:hover     { filter: brightness(1.1); }
+  .rp-btn:active    { transform: scale(.97); }
+  
+  .rp-btn-blue      { background: #3b82f6; color: #fff; }
+  .rp-btn-green     { background: #10b981; color: #fff; }
+  .rp-btn-amber     { background: #f59e0b; color: #fff; }
+  .rp-btn-dark      { background: #0f172a; color: #fff; }
+  .rp-btn-red       { background: #ef4444; color: #fff; }
+  .rp-btn-ghost     { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+
+  /* ── 悬浮视角控制器 (Floating Camera Controls) ── */
+  .canvas-camera-controls {
+    position: absolute; top: 25px; right: 30px; display: flex; gap: 6px; z-index: 10;
+    background: rgba(255, 255, 255, 0.85); padding: 6px; border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); border: 1px solid #e2e8f0; backdrop-filter: blur(4px);
+  }
+  .canvas-camera-controls .rp-btn-view {
+    background: transparent; border: none; padding: 6px 12px; border-radius: 6px;
+    font-size: 12px; font-weight: 600; color: #475569; cursor: pointer; transition: all 0.2s ease;
+  }
+  .canvas-camera-controls .rp-btn-view:hover { background: #e2e8f0; color: #0f172a; }
+
+  /* ── Status bar ── */
+  .rp-statusbar     { padding: 7px 14px; font-size: 12px; font-weight: 500; border-top: 1px solid #e2e8f0; background: #f8fafc; flex-shrink: 0; min-height: 32px; }
+  #room-status      { display: none; }
+  #selection-info   { display: none; margin-left: auto; font-size: 12px; color: #6366f1; font-weight: 600; }
+
+  /* ── Sidebar Header & Filters ── */
+  .rp-sidebar-header{ padding: 14px 16px 10px; border-bottom: 1px solid #f1f5f9; flex-shrink: 0; }
+  .rp-sidebar-header h3 { font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 10px; }
+  .rp-filter-group  { display: flex; flex-direction: column; gap: 8px; }
+
+  /* ── Furniture cards (Column Layout) ── */
+  #room-furniture-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 12px; scrollbar-width: thin; }
+  .furniture-card   { display: flex; align-items: center; gap: 12px; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; cursor: grab; position: relative; transition: all .15s; background: #fafafa; }
+  .furniture-card:hover { border-color: #6366f1; box-shadow: 0 2px 8px rgba(99,102,241,.1); background: #ffffff; }
+  .furniture-card img   { width: 60px; height: 60px; object-fit: contain; border-radius: 6px; background: #f8fafc; border: 1px solid #f1f5f9; flex-shrink: 0; }
+  
+  .fc-info          { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .fc-id            { font-size: 12px; font-weight: bold; color: #1e293b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fc-type          { font-size: 11px; color: #64748b; margin-top: 3px; }
+  
+  .btn-add-furn     { width: 24px; height: 24px; border-radius: 6px; border: none; background: #e0e7ff; color: #4338ca; font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; flex-shrink: 0; }
+  .furniture-card:hover .btn-add-furn { background: #6366f1; color: #fff; }
+
+  /* ── Drop zone hint ── */
+  .rp-canvas.drag-over::after { content: 'Drop here'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 700; color: #6366f1; background: rgba(99,102,241,.08); border: 3px dashed #6366f1; border-radius: 12px; pointer-events: none; z-index: 20;}
+
+  /* ── Hint bar ── */
+  .rp-hint { padding: 10px 14px; font-size: 13px; color: #4338ca; background: #eef2ff; border-bottom: 1px solid #c7d2fe; display: flex; align-items: center; gap: 8px; flex-shrink: 0; line-height: 1.4; }
+  .rp-hint b { color: #312e81; }
+</style>
+
+<div class="rp-root">
+  <div class="rp-topbar">
+    <div class="rp-group">
+      <span class="rp-label">Room</span>
+      <input id="room-name" class="rp-input" style="width:130px" placeholder="Room name" value="Living Room">
+      <select id="room-select" class="rp-select" style="max-width:140px"><option value="">— Load Saved —</option></select>
+    </div>
+
+    <div class="rp-divider"></div>
+
+    <div class="rp-group">
+      <span class="rp-label">Size (m)</span>
+      <input id="room-width" class="rp-input" type="number" min="1" value="10" placeholder="W" style="width: 55px;">
+      <span style="color:#94a3b8">×</span>
+      <input id="room-depth" class="rp-input" type="number" min="1" value="10" placeholder="D" style="width: 55px;">
+      <button id="btn-update-room" class="rp-btn rp-btn-blue"><i class="fa-solid fa-check"></i> Apply</button>
+    </div>
+
+    <div class="rp-divider"></div>
+
+    <div class="rp-group">
+      <button id="btn-mode" class="rp-btn rp-btn-green"><i class="fa-solid fa-arrows-up-down-left-right"></i> Move Mode</button>
+      <button id="btn-delete-item" class="rp-btn rp-btn-red" title="Delete selected (Del key)"><i class="fa-solid fa-trash"></i></button>
+    </div>
+
+    <div class="rp-group" style="margin-left:auto">
+      <button id="btn-new-room" class="rp-btn rp-btn-ghost"><i class="fa-solid fa-plus"></i> New</button>
+      <button id="btn-save-room" class="rp-btn rp-btn-amber"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+      <button id="btn-add-to-cart" class="rp-btn rp-btn-dark"><i class="fa-solid fa-cart-plus"></i> Add to Cart</button>
+    </div>
+  </div>
+
+  <div class="rp-body">
+    <div class="rp-canvas-wrap">
+      
+      <div class="rp-hint">
+        <i class="fa-solid fa-circle-info" style="font-size: 16px;"></i>
+        <span>
+          <b>How to use:</b> 
+          1. <b>Drag & drop</b> items from right panel. 
+          2. Click item to <b>Select</b>. 
+          3. Click <b>Move Mode</b> button above to switch to <b>Rotate</b>. 
+          4. Drag the arrows/rings to adjust. 
+          5. Press <b>Del</b> key to remove.
+        </span>
+      </div>
+
+      <div style="flex: 1; position: relative; display: flex; flex-direction: column;">
+        
+        <div class="canvas-camera-controls">
+          <button id="btn-view-top" class="rp-btn-view" title="Top View">
+            <i class="fa-solid fa-chess-board"></i> Top
+          </button>
+          <button id="btn-view-front" class="rp-btn-view" title="Front View">
+            <i class="fa-solid fa-cube"></i> Front
+          </button>
+          <button id="btn-view-side" class="rp-btn-view" title="Side View">
+            <i class="fa-solid fa-cubes"></i> Side
+          </button>
+        </div>
+
+        <div id="room-canvas" class="rp-canvas"></div>
+      </div>
+
+      <div class="rp-statusbar" style="display:flex;align-items:center">
+        <span id="room-status"></span>
+        <span id="selection-info"></span>
+      </div>
+    </div><div class="rp-sidebar">
+      <div class="rp-sidebar-header">
+        <h3><i class="fa-solid fa-couch" style="color:#6366f1"></i> Furniture Library</h3>
+        <div class="rp-filter-group">
+          <select id="filter-category" class="rp-select">
+            <option value="">All Categories</option>
+          </select>
+          <select id="filter-type" class="rp-select" disabled>
+            <option value="">All Types</option>
+          </select>
+        </div>
+      </div>
+      <div id="room-furniture-list">
+        <div style="padding:20px;text-align:center;color:#94a3b8">Loading…</div>
+      </div>
+    </div></div></div>

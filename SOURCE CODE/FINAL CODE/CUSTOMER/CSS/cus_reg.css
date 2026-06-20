@@ -1,0 +1,132 @@
+ *{
+            padding: 0px;
+            margin: 0px;
+            box-sizing: border-box;
+        }
+
+        body{
+            font-family: "Inter", sans-serif;
+            background: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-width: 400px;
+        }
+
+        .signup-container{
+            background: white;
+            padding: 30px;
+            margin: 15px;
+            
+            border: black 1px solid;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+
+            width: 100%;
+            max-width: 500px;
+            min-width: 400px;
+            height: 100%;
+        }
+
+        .signup-header{
+            display: flex;
+            position: relative;
+
+            margin-bottom: 20px;
+            
+            padding-bottom: 20px;
+            border-bottom: gray 1px solid;
+        }
+
+        .back-button{
+            display: flex;
+            flex:1;
+            justify-content: flex-start;
+            align-items: center;
+
+            padding-left: 10px;
+            font-size: 24px;
+        }
+
+        .back-button a i{
+            color:black;
+        }
+
+        .back-button a i:hover{
+            color: gray;
+        }
+
+        .ruma-logo{
+            flex: 3;
+            display:flex;
+        }
+
+        img{
+            width:200px;
+            height: auto;
+        }
+
+        .user-name{         
+            display: flex;
+        }
+
+        .first_name{
+            margin-right: 10%;
+        }
+        
+        label{
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .info{
+            width:100%;
+            padding: 14px 16px;
+            margin:10px 0px;
+            border: 2px solid #e1e1e1;
+            border-radius: 20px;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        .check-box{
+            margin-left: 10px;
+        }
+
+        .signUp-btn{
+            background-color: lightgray;
+            color:black;
+            padding: 10px 15px;
+            margin: 10px;
+            cursor:pointer;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            align-items: center;
+        }
+
+        .signUp-btn:hover{
+            background-color: gray;
+            color:white;
+        }
+
+        .signUp-btn:active{
+            background-color: lightgray;
+            color:black;
+        }
+
+        nav{
+            display: flex;
+            justify-content: center;
+            font-size: 14px;
+            color:black
+        }
+
+        nav a{
+            color:black;
+        }
+
+        nav a:hover{
+            color: gray;
+        }

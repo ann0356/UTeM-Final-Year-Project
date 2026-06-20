@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <link rel="icon" type="image/png" href="https://dzgtfwdqfqecetnfhcdi.supabase.co/storage/v1/object/public/furniture-images/ruma_logo_white.png">
+    <title>Ruma Furniture Store</title> 
+    <link rel="stylesheet" href="../CSS/Style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@100..900&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+        "three": "https://unpkg.com/three@0.150.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.150.0/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+
+<body>
+    <header>
+        <div class="left-panel">
+            <div class="ruma-logo">
+                <a href="#" id="brand-logo" aria-label="Ruma Furniture Home">
+                    <img src="https://dzgtfwdqfqecetnfhcdi.supabase.co/storage/v1/object/public/furniture-images/Ruma_Logo_black.png" alt="Ruma Furniture Logo">
+                </a> 
+            </div>
+
+            <ul class="menu">
+                <li><a href="#" class="nav-link" data-page="aboutUs">About Us</a></li>
+                <li><a href="#" class="nav-link" data-page="storeLocation">Store Locations</a></li>
+                <li><a href="#" class="nav-link" data-page="contactUs">Contact Us</a></li>
+            </ul>
+        </div>
+
+        <div class="right-panel">
+            <div class="room-planner">
+                <a href="#" class="nav-link" data-page="room" title="Visualize Your Room" aria-label="Open 3D Room Planner">
+                    <i class="fa-solid fa-couch" aria-hidden="true"></i> 
+                </a>
+            </div>
+            
+            <div class="search-container">
+                <button class="search-icon" type="button" aria-label="Toggle Search Panel">
+                    <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                </button>
+
+                <div class="search-panel">
+                    <input type="text" id="search-input" placeholder="Search for products..." aria-label="Search products">
+                </div> 
+
+                <div class="result-panel" style="display: none;">
+                    <div id="products-container" class="products-search-list"></div>
+                </div>
+            </div>           
+
+            <div class="user-account">
+                <a href="#" aria-label="User Account Menu">
+                    <i class="fa-regular fa-user" aria-hidden="true"></i>
+                </a>
+
+                <div class="dropdown-options">
+                    <a href="cus_reg.html" class="logged-out-only">Create an Account</a>
+                    <a href="cus_login.html" class="logged-out-only">Login</a>
+                    <a href="#" class="nav-link logged-in-only" data-page="profile" style="display: none;">User Profile</a>
+                    <a href="#" class="logged-in-only" id="nav-logout-btn" style="display: none;">Logout</a>
+                </div>
+            </div>
+
+            <div class="shopping-cart">
+                <a href="#" class="nav-link" data-page="cart" aria-label="View Shopping Cart">
+                    <i class="fa-solid fa-cart-arrow-down" aria-hidden="true"></i>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <nav>
+        <ul class="product-categories" id="product-categories" aria-label="Main Product Categories">
+        </ul>
+    </nav>
+
+    <main id="main-content">
+    </main>
+
+    <footer style="text-align: center; padding: 20px; background-color: var(--footer-bg, gray); color: var(--footer-text, white); font-size: 14px;">
+        Copyright © 2026 Ruma Home Sdn Bhd (1175670-T). All rights reserved.
+    </footer>
+
+    <button id="a11y-trigger" aria-label="Open Accessibility Menu" style="position: fixed; bottom: 30px; left: 30px; background: #2563eb; color: white; border: none; border-radius: 50%; width: 50px; height: 50px; font-size: 24px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.2); z-index: 10000;">
+        <i class="fa-solid fa-universal-access"></i>
+    </button>
+
+    <div id="a11y-panel" style="display: none; position: fixed; bottom: 90px; left: 30px; background: var(--bg-main); border: 2px solid var(--text-main); border-radius: 12px; padding: 20px; width: 250px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); z-index: 10000; font-family: 'Inter', sans-serif;">
+        <h3 style="margin: 0 0 15px 0; font-size: 16px; color: var(--text-main);">Accessibility Tools</h3>
+        
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; font-size: 14px; margin-bottom: 8px; font-weight: bold; color: var(--text-main);">Text Size</label>
+            <div style="display: flex; gap: 10px;">
+                <button id="a11y-font-decrease" style="flex: 1; padding: 8px; border: 1px solid #cbd5e1; background: #f8fafc; color: #1e2937; border-radius: 6px; cursor: pointer; font-weight: bold;">A -</button>
+                <button id="a11y-font-reset" style="flex: 1; padding: 8px; border: 1px solid #cbd5e1; background: #f8fafc; color: #1e2937; border-radius: 6px; cursor: pointer; font-weight: bold;">Reset</button>
+                <button id="a11y-font-increase" style="flex: 1; padding: 8px; border: 1px solid #cbd5e1; background: #f8fafc; color: #1e2937; border-radius: 6px; cursor: pointer; font-weight: bold;">A +</button>
+            </div>
+        </div>
+
+        <div>
+            <label style="display: block; font-size: 14px; margin-bottom: 8px; font-weight: bold; color: var(--text-main);">Color Contrast</label>
+            <button id="a11y-contrast-toggle" style="width: 100%; padding: 10px; background: var(--text-main); color: var(--bg-main); border: 2px solid var(--text-main); border-radius: 6px; cursor: pointer; font-weight: bold;">
+                Toggle High Contrast
+            </button>
+        </div>
+    </div>
+
+    <script type="module" src="../JS/script.js"></script>
+</body>
+</html>
