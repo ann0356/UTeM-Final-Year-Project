@@ -24,8 +24,9 @@ export async function initOrder(params) {
         const { data: { session } } = await _supabase.auth.getSession();
         if (!session) {
             alert("Session expired. Please login again.");
-            loadCustomerContent('login');
-            return;
+            // 🌟 终极修复：购物车结算时发现没登录，直接踢去真实的登录页面
+            window.location.href = 'cus_login.html'; 
+            return; // 必须 return 阻断后续结算逻辑
         }
         
         const userId = session.user.id;
@@ -56,7 +57,7 @@ export async function initOrder(params) {
                 quantity,
                 structure_id,
                 structure:structure_id (
-                    structure_name, colour, price, image_url, material,stock
+                    structure_name, colour, price, image_url, material, stock,
                     furniture:furniture_id ( furniture_name )
                 )
             `)
@@ -101,7 +102,7 @@ function renderOrderItems() {
         row.style.cssText = "display: flex; gap: 15px; align-items: center; border-bottom: 1px solid #f8fafc; padding-bottom: 15px;";
         
         row.innerHTML = `
-            <img src="${struct.image_url || '../IMAGES/placeholder.png'}" style="width: 70px; height: 70px; object-fit: cover; border-radius: 6px; border: 1px solid #f1f5f9;">
+            <img src="${struct.image_url || 'https://dzgtfwdqfqecetnfhcdi.supabase.co/storage/v1/object/public/furniture-images/ERROR%20PICTURE.png'}" style="width: 70px; height: 70px; object-fit: cover; border-radius: 6px; border: 1px solid #f1f5f9;">
             <div style="flex-grow: 1;">
                 <h4 style="margin: 0 0 5px 0; font-size: 16px; color: #1e2937;">${name}</h4>
                 <p style="margin: 0; font-size: 13px; color: #64748b;">${struct.structure_name || ''} • ${struct.colour || ''}</p>

@@ -538,7 +538,8 @@ function createCard(title, subtitle, onClick, onDelete, onEdit) {
     card.onmouseout = () => { card.style.border = "1px solid transparent"; card.querySelector('.card-actions').style.display = 'none'; };
     
     card.onclick = onClick;
-    card.querySelector('.btn-edit-card').onclick = () => openEditModal(table, id, currentName);
+    // 🌟 修复：直接执行外部传进来的 onEdit 参数，不要再写硬编码的变量了！
+    card.querySelector('.btn-edit-card').onclick = onEdit; 
     card.querySelector('.btn-delete-card').onclick = onDelete;
     return card;
 }

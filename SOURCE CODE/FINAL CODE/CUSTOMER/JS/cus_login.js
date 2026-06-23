@@ -41,7 +41,6 @@ window.addEventListener('DOMContentLoaded', () => {
             // 调用 Supabase 发送密码重置邮件
             alert("Sending reset email...");
             const { data, error } = await _supabase.auth.resetPasswordForEmail(email);
-            redirectTo: 'http://127.0.0.1:5501'
 
             if (error) {
                 alert("Failed to send reset email: " + error.message);

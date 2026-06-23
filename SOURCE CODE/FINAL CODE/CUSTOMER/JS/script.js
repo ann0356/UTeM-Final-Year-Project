@@ -236,53 +236,69 @@ function initSearchControls() {
         }
     });
 
+    // 👇 🌟 核心修复 1：加入 Debounce 防抖计时器 👇
     if (searchInput) {
-        searchInput.addEventListener('input', async () => {
+        let searchTimeout = null; // 声明防抖计时器
+
+        searchInput.addEventListener('input', () => {
             const query = searchInput.value.trim();
-            if (!query) { if (resultPanel) resultPanel.style.display = 'none'; return; }
-
-            try {
-                const baseSelect = `
-                    structure_id, structure_name, colour, price, material, image_url, stock,
-                    furniture!inner (
-                        furniture_id,
-                        furniture_name, description,
-                        type!inner ( type_name, category!inner ( category_name ) )
-                    )
-                `;
-
-                const [res1, res2, res3, res4] = await Promise.all([
-                    _supabase.from('structure').select(baseSelect).ilike('structure_name', `%${query}%`),
-                    _supabase.from('structure').select(baseSelect).ilike('furniture.furniture_name', `%${query}%`),
-                    _supabase.from('structure').select(baseSelect).ilike('furniture.type.type_name', `%${query}%`),
-                    _supabase.from('structure').select(baseSelect).ilike('furniture.type.category.category_name', `%${query}%`)
-                ]);
-
-                if (res1.error) throw res1.error;
-                if (res2.error) throw res2.error;
-                if (res3.error) throw res3.error;
-                if (res4.error) throw res4.error;
-
-                const uniqueRecordsMap = new Map();
-                
-                [res1, res2, res3, res4].forEach(res => {
-                    if (res.data) {
-                        res.data.forEach(item => {
-                            uniqueRecordsMap.set(item.structure_id, item);
-                        });
-                    }
-                });
-
-                const finalResults = Array.from(uniqueRecordsMap.values());
-
-                if (resultPanel) resultPanel.style.display = 'block';
-                renderSearchResults(finalResults);
-
-            } catch (err) { 
-                console.error("Relational Instant Search Error: ", err); 
+            
+            // 如果用户还在敲击键盘，立刻打断上一次请求
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
             }
+
+            if (!query) { 
+                if (resultPanel) resultPanel.style.display = 'none'; 
+                return; 
+            }
+
+            // 重新开始倒计时，等待 400ms 后执行查询
+            searchTimeout = setTimeout(async () => {
+                try {
+                    const baseSelect = `
+                        structure_id, structure_name, colour, price, material, image_url, stock,
+                        furniture!inner (
+                            furniture_id,
+                            furniture_name, description,
+                            type!inner ( type_name, category!inner ( category_name ) )
+                        )
+                    `;
+
+                    const [res1, res2, res3, res4] = await Promise.all([
+                        _supabase.from('structure').select(baseSelect).ilike('structure_name', `%${query}%`),
+                        _supabase.from('structure').select(baseSelect).ilike('furniture.furniture_name', `%${query}%`),
+                        _supabase.from('structure').select(baseSelect).ilike('furniture.type.type_name', `%${query}%`),
+                        _supabase.from('structure').select(baseSelect).ilike('furniture.type.category.category_name', `%${query}%`)
+                    ]);
+
+                    if (res1.error) throw res1.error;
+                    if (res2.error) throw res2.error;
+                    if (res3.error) throw res3.error;
+                    if (res4.error) throw res4.error;
+
+                    const uniqueRecordsMap = new Map();
+                    
+                    [res1, res2, res3, res4].forEach(res => {
+                        if (res.data) {
+                            res.data.forEach(item => {
+                                uniqueRecordsMap.set(item.structure_id, item);
+                            });
+                        }
+                    });
+
+                    const finalResults = Array.from(uniqueRecordsMap.values());
+
+                    if (resultPanel) resultPanel.style.display = 'block';
+                    renderSearchResults(finalResults);
+
+                } catch (err) { 
+                    console.error("Relational Instant Search Error: ", err); 
+                }
+            }, 400); // 400ms 黄金防抖时间
         });
     }
+    // 👆 ========================================= 👆
 }
 
 async function checkLoginStatus() {
@@ -327,19 +343,21 @@ function renderSearchResults(structures) {
         const furniture = item.furniture || {};
         const type = furniture.type || {};
         const category = type.category || {};
-        const finalImageUrl = item.image_url ? item.image_url : '../IMAGES/placeholder.png';
+        
+        // 👇 🌟 核心修复 2：统一使用公网 Logo 作为图片为空/加载失败的后备 👇
+        const finalImageUrl = item.image_url ? item.image_url : 'https://dzgtfwdqfqecetnfhcdi.supabase.co/storage/v1/object/public/furniture-images/ruma_logo_white.png';
 
+        // 👇 🌟 核心修复 3：统一库存判定标准 (与商品详情页逻辑完全同步) 👇
         const stock = Number(item.stock || 0);
         let stockHtml = '';
-        if (stock >= 1000) {
-            stockHtml = `<span style="color: #2ecc71; font-size: calc(0.75rem * var(--font-scale));">Enough stock</span>`;
-        } else if (stock > 100 && stock < 1000) {
-            stockHtml = `<span style="color: #e67e22; font-size: calc(0.75rem * var(--font-scale));">Less stock</span>`;
-        } else if (stock > 0 && stock <= 100) {
-            stockHtml = `<span style="color: #e74c3c; font-size: calc(0.75rem * var(--font-scale)); font-weight: bold;">Only ${stock} left</span>`;
+        if (stock >= 100) {
+            stockHtml = `<span style="color: #2ecc71; font-size: calc(0.75rem * var(--font-scale)); font-weight: bold;"><i class="fa-solid fa-box-open"></i> In Stock</span>`;
+        } else if (stock > 0) {
+            stockHtml = `<span style="color: #e67e22; font-size: calc(0.75rem * var(--font-scale)); font-weight: bold;">Only ${stock} left</span>`;
         } else {
-            stockHtml = `<span style="color: var(--text-hover); font-size: calc(0.75rem * var(--font-scale));">Out of stock</span>`;
+            stockHtml = `<span style="color: #e74c3c; font-size: calc(0.75rem * var(--font-scale)); font-weight: bold;">Out of stock</span>`;
         }
+        // 👆 ========================================================= 👆
 
         const productCard = document.createElement('div');
         productCard.className = 'product-card';
@@ -351,14 +369,14 @@ function renderSearchResults(structures) {
         
         productCard.innerHTML = `
             <div class="product-img-box">
-                <img src="${finalImageUrl}" alt="${furniture.furniture_name || 'furniture'}" onerror="this.src='../IMAGES/placeholder.png'">
+                <img src="${finalImageUrl}" alt="${furniture.furniture_name || 'furniture'}" onerror="this.src='https://dzgtfwdqfqecetnfhcdi.supabase.co/storage/v1/object/public/furniture-images/ruma_logo_white.png'">
             </div>
             <div class="product-info">
                 <span class="product-category" style="font-size:calc(0.8rem * var(--font-scale));">${category.category_name || 'N/A'} / ${type.type_name || 'N/A'}</span>
                 <h3 style="color: var(--text-main);">${furniture.furniture_name || 'Item'} <span style="font-weight: normal; color: var(--text-hover); font-size: calc(0.85rem * var(--font-scale));">(${item.colour})</span></h3>
-                <div style="margin: 2px 0;">${stockHtml}</div>
+                <div style="margin: 4px 0;">${stockHtml}</div>
                 <p class="product-material" style="font-size: calc(0.8rem * var(--font-scale)); color: var(--text-hover); margin: 2px 0;">${item.material}</p>
-                <p class="product-price">RM ${item.price}</p>
+                <p class="product-price" style="font-weight: bold; color: #e67e22;">RM ${item.price}</p>
             </div>
         `;
         

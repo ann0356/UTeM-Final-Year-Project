@@ -12,8 +12,9 @@ export async function initProfile(params) {
         const { data: { session } } = await _supabase.auth.getSession();
         if (!session) {
             alert("Please login to view your profile.");
-            loadCustomerContent('login');
-            return;
+            // 🌟 终极修复：直接跳回独立登录页，绝不使用 SPA 引擎加载 HTML
+            window.location.href = 'cus_login.html'; 
+            return; // 必须 return，阻止下面拉取数据的代码执行！
         }
         
         const userId = session.user.id;
@@ -158,7 +159,7 @@ function renderOrdersList(viewType) {
             const snap = item.snapshot_info || {};
             itemsHtml += `
                 <div style="display: flex; gap: 15px; margin-top: 15px; align-items: center; background: #f8fafc; padding: 10px; border-radius: 8px;">
-                    <img src="${snap.image || '../IMAGES/placeholder.png'}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid #e2e8f0;">
+                    <img src="${snap.image || 'https://dzgtfwdqfqecetnfhcdi.supabase.co/storage/v1/object/public/furniture-images/ERROR%20PICTURE.png'}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid #e2e8f0;">
                     <div style="flex-grow: 1;">
                         <h4 style="margin: 0 0 4px 0; font-size: 14px; color: #1e2937;">${snap.name || 'Unknown Item'}</h4>
                         <p style="margin: 0; font-size: 12px; color: #64748b;">Variant: ${snap.variant} • ${snap.colour}</p>
@@ -237,7 +238,7 @@ function bindOrderTabs() {
 }
 
 // ==========================================
-// ❌ 取消订单功能
+// ❌ 取消订单功能 (已修复：同步退还库存)
 // ==========================================
 async function handleCancelOrder(event) {
     const btn = event.target;
@@ -252,22 +253,55 @@ async function handleCancelOrder(event) {
     btn.innerText = "Cancelling...";
 
     try {
-        // 让 Supabase 更新这个订单的状态
-        const { error } = await _supabase
+        // 👇 🌟 核心修复 1：在取消订单前，先把这个订单里的商品全部查出来 👇
+        const { data: orderItems, error: itemsErr } = await _supabase
+            .from('order_item')
+            .select('structure_id, quantity')
+            .eq('order_id', orderId);
+
+        if (itemsErr) throw itemsErr;
+
+        // 👇 🌟 核心修复 2：遍历商品，把扣掉的库存还给数据库 👇
+        if (orderItems && orderItems.length > 0) {
+            for (const item of orderItems) {
+                // 1. 去查这个商品现在仓库里还剩多少
+                const { data: liveStruct } = await _supabase
+                    .from('structure')
+                    .select('stock')
+                    .eq('structure_id', item.structure_id)
+                    .single();
+
+                if (liveStruct) {
+                    // 2. 原有库存 + 这个订单退回的数量
+                    const newStock = Number(liveStruct.stock || 0) + Number(item.quantity);
+                    
+                    // 3. 写回数据库
+                    await _supabase
+                        .from('structure')
+                        .update({ stock: newStock })
+                        .eq('structure_id', item.structure_id);
+                    
+                    console.log(`Restored ${item.quantity} stock for ${item.structure_id}. New stock: ${newStock}`);
+                }
+            }
+        }
+        // 👆 ======================================================= 👆
+
+        // 3. 把订单状态改成 cancelled
+        const { error: updateErr } = await _supabase
             .from('orders')
             .update({ status: 'cancelled' })
             .eq('order_id', orderId);
 
-        if (error) throw error;
+        if (updateErr) throw updateErr;
 
         // 成功反馈
-        alert("Order cancelled successfully.");
+        alert("Order cancelled successfully, and stock has been restored.");
 
-        // 🌟 核心：重新获取最新订单数据并刷新页面！
+        // 🌟 重新获取最新订单数据并刷新页面！
         const { data: { session } } = await _supabase.auth.getSession();
         if (session) {
-            await fetchOrders(session.user.id); // 重新去数据库拉一次数据
-            // 此时页面会自动重新渲染，被取消的订单就会瞬间飞到 History 页面去
+            await fetchOrders(session.user.id); // 重新拉取数据，订单自动跳去 History
         }
 
     } catch (err) {

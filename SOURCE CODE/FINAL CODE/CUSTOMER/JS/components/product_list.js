@@ -13,6 +13,7 @@ export async function initProductList(params) {
     gridElem.innerHTML = "<p style='grid-column: 1/-1; text-align:center; color:#7f8c8d;'>Gathering exquisite furniture items...</p>";
 
     try {
+        // 移除了 structure 中的 stock 字段，优化查询
         let query = _supabase.from('furniture').select(`
             furniture_id,
             furniture_name,
@@ -27,7 +28,6 @@ export async function initProductList(params) {
                 structure_name,
                 price,
                 image_url,
-                stock,
                 colour
             )
         `);
@@ -50,25 +50,8 @@ export async function initProductList(params) {
 
         furnitureList.forEach(fur => {
             const defaultSpec = (fur.structure && fur.structure.length > 0) ? fur.structure[0] : null;
-            const imgUrl = defaultSpec?.image_url ? defaultSpec.image_url : '../IMAGES/placeholder.png';
+            const imgUrl = defaultSpec?.image_url ? defaultSpec.image_url : 'https://dzgtfwdqfqecetnfhcdi.supabase.co/storage/v1/object/public/furniture-images/ERROR%20PICTURE.png';
             const priceText = defaultSpec ? `RM ${Number(defaultSpec.price).toFixed(2)}` : "Price TBD";
-
-            // 4档库存状态控制
-            let stockHtml = '';
-            if (defaultSpec) {
-                const stock = Number(defaultSpec.stock || 0);
-                if (stock >= 1000) {
-                    stockHtml = `<span style="color: #2ecc71; font-size: 13px; font-weight: 500;">Enough stock</span>`;
-                } else if (stock > 100 && stock < 1000) {
-                    stockHtml = `<span style="color: #e67e22; font-size: 13px; font-weight: 500;">Less stock</span>`;
-                } else if (stock > 0 && stock <= 100) {
-                    stockHtml = `<span style="color: #e74c3c; font-size: 13px; font-weight: bold;">Only ${stock} items left</span>`;
-                } else {
-                    stockHtml = `<span style="color: #95a5a6; font-size: 13px; font-weight: 500;">Out of stock</span>`;
-                }
-            } else {
-                stockHtml = `<span style="color: #95a5a6; font-size: 13px;">No specifications</span>`;
-            }
 
             const productCard = document.createElement('div');
             productCard.style.cssText = `
@@ -78,16 +61,15 @@ export async function initProductList(params) {
                 display: flex; flex-direction: column;
             `;
 
-            // 🌟 保持不展示 ID，并已完全清除了 description `<p>` 标签标签
+            // 🌟 移除了 stockHtml 变量及其对应的 div
             productCard.innerHTML = `
                 <div style="width:100%; height:240px; background:#f7fafc; overflow:hidden; position:relative;">
-                    <img src="${imgUrl}" alt="${fur.furniture_name}" style="width:100%; height:100%; object-fit:cover;" onerror="this.src='../IMAGES/placeholder.png'">
+                    <img src="${imgUrl}" alt="${fur.furniture_name}" style="width:100%; height:100%; object-fit:cover;" onerror="this.src='https://dzgtfwdqfqecetnfhcdi.supabase.co/storage/v1/object/public/furniture-images/ERROR%20PICTURE.png'">
                     ${fur.structure && fur.structure.length > 1 ? `<span style="position:absolute; bottom:10px; right:10px; background:rgba(0,0,0,0.6); color:white; font-size:11px; padding:3px 8px; border-radius:20px;">${fur.structure.length} Variants</span>` : ''}
                 </div>
                 <div style="padding: 20px; flex:1; display:flex; flex-direction:column; justify-content:space-between; gap:10px;">
                     <div>
                         <h3 style="font-size: 16px; margin:0 0 4px 0; color:#2d3748;">${fur.furniture_name}</h3>
-                        <div>${stockHtml}</div>
                     </div>
                     
                     <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed #edf2f7; padding-top:10px;">

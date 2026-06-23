@@ -1,37 +1,59 @@
-import { _supabase } from '../../SUPABASE/supabase_customer_conn.js'; // 修正为正确的双层回退路径
+import { _supabase } from '../../SUPABASE/supabase_customer_conn.js'; 
 
 document.addEventListener('DOMContentLoaded', async () => {
     const requestSection = document.getElementById('request-section');
     const updateSection = document.getElementById('update-section');
     const requestForm = document.getElementById('request-form');
     const updateForm = document.getElementById('update-form');
+    
+    // 控制旧密码显示状态的变量
+    let isPasswordRecoveryMode = false;
+    let currentUserEmail = null; // 用于验证旧密码时需要
 
     // ==========================================
-    // 🧠 1. 智能状态检测：决定显示哪个界面
+    // 🧠 1. 智能状态检测
     // ==========================================
     async function checkState() {
-        const { data: { session }, error } = await _supabase.auth.getSession();
+        const { data: { session } } = await _supabase.auth.getSession();
         
-        // 如果有 session (意味着用户已登录，或者刚刚通过邮件里的安全链接跳转过来)
+        // 检查是不是从邮箱点 "Reset Password" 链接过来的
+        const hash = window.location.hash;
+        if (hash && hash.includes('type=recovery')) {
+            isPasswordRecoveryMode = true;
+        }
+
         if (session) {
+            currentUserEmail = session.user.email;
             requestSection.style.display = 'none';
             updateSection.style.display = 'block';
+
+            // 🌟 核心逻辑：如果是忘记密码流程进来的，隐藏旧密码框
+            if (isPasswordRecoveryMode) {
+                document.getElementById('old-password-group').style.display = 'none';
+                document.getElementById('upd-old-password').removeAttribute('required');
+                document.getElementById('update-title').innerText = "Reset Password";
+                document.getElementById('update-desc').innerText = "Please set your new password.";
+            } else {
+                // 如果是登录状态下主动点 "修改密码" 过来的，必须强制输入旧密码
+                document.getElementById('old-password-group').style.display = 'block';
+                document.getElementById('upd-old-password').setAttribute('required', 'true');
+                document.getElementById('update-title').innerText = "Change Password";
+                document.getElementById('update-desc').innerText = "Please enter your current password to verify your identity.";
+            }
         } else {
-            // 没有登录，显示输入邮箱的界面
+            // 没登录且没有带着恢复链接，显示让你输邮箱的界面
             requestSection.style.display = 'block';
             updateSection.style.display = 'none';
         }
     }
 
-    // 监听 Supabase 的特殊事件 (捕捉从邮件链接跳回来的瞬间)
     _supabase.auth.onAuthStateChange((event, session) => {
         if (event === 'PASSWORD_RECOVERY') {
-            requestSection.style.display = 'none';
-            updateSection.style.display = 'block';
+            isPasswordRecoveryMode = true;
+            checkState();
         }
     });
 
-    // 页面加载时执行检查
     await checkState();
 
     // ==========================================
@@ -47,14 +69,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             btn.disabled = true;
 
             try {
-                // redirectTo 的作用是让用户在邮箱里点击链接后，跳回当前的这个重置页面
                 const { error } = await _supabase.auth.resetPasswordForEmail(email, {
                     redirectTo: window.location.href 
                 });
-
                 if (error) throw error;
                 alert("A password reset link has been sent to your email. Please check your inbox (and spam folder).");
-                
             } catch (error) {
                 console.error("Reset Error:", error);
                 alert("Error: " + error.message);
@@ -72,47 +91,55 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('btn-update');
+            const oldPassword = document.getElementById('upd-old-password').value;
             const newPassword = document.getElementById('upd-password').value;
             const confirmPassword = document.getElementById('upd-confirm').value;
 
-            // 🌟 校验 1: 检查两次密码是否一致
+            // 基础校验
             if (newPassword !== confirmPassword) {
-                alert("Passwords do not match! Please try again.");
-                return;
+                return alert("Passwords do not match! Please try again.");
             }
-
-            // 🌟 校验 2: 检查密码长度 
             if (newPassword.length < 8) {
-                alert("Password length cannot less than 8!");
-                return;
+                return alert("Password length cannot be less than 8!");
             }
-
-            // 🌟 校验 3: 检查特殊符号 
             const passwordSpecialCharRegex = /[+@_%!\-]/; 
             if (!passwordSpecialCharRegex.test(newPassword)) {
-                alert("Password should include special symbols! (+@_%!-)");
-                return;
+                return alert("Password should include special symbols! (+@_%!-)");
             }
 
-            btn.innerText = 'Updating...';
+            btn.innerText = 'Verifying & Updating...';
             btn.disabled = true;
 
             try {
-                // 提交新密码到 Supabase
-                const { error } = await _supabase.auth.updateUser({
+                // 🌟 核心防线：如果不是“忘记密码”模式，就必须先验证旧密码！
+                if (!isPasswordRecoveryMode) {
+                    if (!oldPassword) throw new Error("Current password is required.");
+                    
+                    // 利用 Supabase 的 signIn 机制来静默验证旧密码是否正确
+                    const { error: verifyError } = await _supabase.auth.signInWithPassword({
+                        email: currentUserEmail,
+                        password: oldPassword,
+                    });
+
+                    if (verifyError) {
+                        throw new Error("Incorrect current password! Please try again.");
+                    }
+                }
+
+                // 旧密码验证通过 (或是走的邮箱重置通道)，正式更新密码
+                const { error: updateError } = await _supabase.auth.updateUser({
                     password: newPassword
                 });
 
-                if (error) throw error;
+                if (updateError) throw updateError;
 
-                // 🌟 更新成功后，强制登出并引导至登录页重新登录
-                alert("Success! Your password has been updated. Please log in with your new password.");
+                alert("Success! Your password has been updated. Please log in again.");
                 await _supabase.auth.signOut();
                 window.location.href = 'cus_login.html'; 
 
             } catch (error) {
                 console.error("Update Error:", error);
-                alert("Failed to update password: " + error.message);
+                alert(error.message);
             } finally {
                 btn.innerText = 'Update Password';
                 btn.disabled = false;
@@ -121,25 +148,49 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ==========================================
-    // 🛑 4. 拦截取消操作 (智能判断是否强行登出)
+    // 🛑 4. 拦截取消操作
     // ==========================================
     const cancelBtn = document.getElementById('cancel-reset');
     if (cancelBtn) {
         cancelBtn.addEventListener('click', async (e) => {
             e.preventDefault(); 
-            
-            // 检查网址里有没有我们埋下的 "from=profile" 记号
             const urlParams = new URLSearchParams(window.location.search);
             const isFromProfile = urlParams.get('from') === 'profile';
 
-            if (isFromProfile) {
-                // 场景 A：从个人中心正常过来的已登录用户。直接退回 Profile，不登出！
+            if (isFromProfile && !isPasswordRecoveryMode) {
                 window.location.href = 'cus_index.html?page=profile';
             } else {
-                // 场景 B：从忘记密码的邮件链接过来的。属于临时会话，必须登出销毁！
                 await _supabase.auth.signOut(); 
                 window.location.href = 'cus_index.html';
             }
         });
     }
+
+    // ==========================================
+    // 👁️ 5. 密码小眼睛功能绑定
+    // ==========================================
+    function setupPasswordToggle(inputId, iconId) {
+        const inputField = document.getElementById(inputId);
+        const toggleIcon = document.getElementById(iconId);
+
+        if (inputField && toggleIcon) {
+            toggleIcon.addEventListener('click', () => {
+                const type = inputField.type === 'password' ? 'text' : 'password';
+                inputField.type = type;
+
+                if (type === 'text') {
+                    toggleIcon.classList.remove('fa-eye-slash');
+                    toggleIcon.classList.add('fa-eye');
+                } else {
+                    toggleIcon.classList.remove('fa-eye');
+                    toggleIcon.classList.add('fa-eye-slash');
+                }
+            });
+        }
+    }
+
+    // 绑定所有的密码框
+    setupPasswordToggle('upd-old-password', 'toggle-old-pwd');
+    setupPasswordToggle('upd-password', 'toggle-pwd');
+    setupPasswordToggle('upd-confirm', 'toggle-confirm');
 });

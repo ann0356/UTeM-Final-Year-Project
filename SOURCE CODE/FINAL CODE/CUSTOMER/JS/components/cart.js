@@ -129,7 +129,7 @@ function renderCartItems() {
             <input type="checkbox" class="cart-checkbox" data-id="${item.cart_item_id}" data-price="${price}" data-qty="${qty}" 
                    style="width: 20px; height: 20px; cursor: pointer;" ${outOfStock ? 'disabled' : ''}>
             
-            <img src="${struct.image_url || '../IMAGES/placeholder.png'}" style="width: 100px; height: 100px; object-fit: cover; border-radius: 8px; border: 1px solid #f1f5f9;">
+            <img src="${struct.image_url || 'https://dzgtfwdqfqecetnfhcdi.supabase.co/storage/v1/object/public/furniture-images/ERROR%20PICTURE.png'}" style="width: 100px; height: 100px; object-fit: cover; border-radius: 8px; border: 1px solid #f1f5f9;">
             
             <div style="flex-grow: 1;">
                 <h3 style="margin: 0 0 5px 0; font-size: 18px; color: #1e2937;">${furName}</h3>

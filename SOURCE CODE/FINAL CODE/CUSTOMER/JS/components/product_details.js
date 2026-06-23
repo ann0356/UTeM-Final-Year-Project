@@ -191,7 +191,7 @@ function updateMediaAndPricing() {
     const imgElem = document.getElementById('display-image');
     const modelElem = document.getElementById('display-model');
     
-    if (imgElem) imgElem.src = exactSKU.image_url || '../IMAGES/placeholder.png';
+    if (imgElem) imgElem.src = exactSKU.image_url || 'https://dzgtfwdqfqecetnfhcdi.supabase.co/storage/v1/object/public/furniture-images/ERROR%20PICTURE.png';
     
  // 👇 🌟 完美同步 Blender Material Preview 设定 👇
     if (modelElem) {
@@ -413,6 +413,7 @@ async function handleAddToCart() {
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="color:white; margin-right:8px;"></i> Adding...';
         btn.disabled = true;
 
+ // 👇 替换这部分代码 👇
         let cartId;
         let { data: cartData, error: cartError } = await _supabase
             .from('cart')
@@ -420,17 +421,26 @@ async function handleAddToCart() {
             .eq('user_id', userId)
             .maybeSingle();
 
-        if (cartError && cartError.code === 'PGRST116') {
+        if (cartError) {
+            // 如果有真正的数据库报错，直接抛出
+            throw cartError;
+        }
+
+        if (!cartData) {
+            // 🌟 核心修复：如果没找到购物车 (cartData 为 null)，直接新建！
             cartId = 'CART-' + Date.now(); 
             const { error: insertCartError } = await _supabase
                 .from('cart')
                 .insert([{ cart_id: cartId, user_id: userId }]);
+            
             if (insertCartError) throw insertCartError;
-        } else if (cartError) {
-            throw cartError;
+            console.log("New cart created:", cartId);
         } else {
+            // 如果找到了购物车，直接获取它的 ID
             cartId = cartData.cart_id;
+            console.log("Using existing cart:", cartId);
         }
+        // 👆 替换这部分代码 👆
 
         const { data: existingItem, error: checkItemError } = await _supabase
             .from('cart_item')
@@ -447,12 +457,29 @@ async function handleAddToCart() {
         if (existingItem) {
             // 🌟 累加用户选择的数量
             const newQty = Number(existingItem.quantity) + qtyToAdd;
+
+            // 👇 🌟 核心修复：双重库存校验，防止购物车总数超过实际库存 👇
+            if (newQty > Number(exactSKU.stock)) {
+                alert(`Sorry, you cannot add ${qtyToAdd} more. We only have ${exactSKU.stock} in stock, and you already have ${existingItem.quantity} in your cart.`);
+                
+                // 因为报错阻断了流程，所以要手动把按钮的状态恢复过来
+                btn.style.background = "#1e2937";
+                btn.innerHTML = '<i class="fa-solid fa-cart-plus" style="color:white; margin-right:8px;"></i> Add to Cart';
+                btn.disabled = false;
+                
+                return; // 必须 return，彻底终止后续向数据库发起的 Update 操作
+            }
+            // 👆 ========================================================= 👆
+
             const { error: updateError } = await _supabase
                 .from('cart_item')
                 .update({ quantity: newQty, updated_at: new Date().toISOString() })
                 .eq('cart_item_id', existingItem.cart_item_id);
+                
             if (updateError) throw updateError;
+            
         } else {
+            // ... 下面就是原有的 else { (新建 cartItemId...) } 的逻辑，保持不变
             const cartItemId = 'CITEM-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
             const { error: insertItemError } = await _supabase
                 .from('cart_item')

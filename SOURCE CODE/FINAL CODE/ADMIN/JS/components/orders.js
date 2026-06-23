@@ -176,7 +176,7 @@ async function openOrderDetail(order) {
                 row.style.borderBottom = "1px solid #f1f5f9";
                 row.innerHTML = `
                     <td style="padding: 12px 5px; display: flex; align-items: center; gap: 10px;">
-                        <img src="${s.image_url || '../IMAGES/placeholder.png'}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px; background: #f8fafc;">
+                        <img src="${s.image_url || 'https://dzgtfwdqfqecetnfhcdi.supabase.co/storage/v1/object/public/furniture-images/ERROR%20PICTURE.png'}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px; background: #f8fafc;">
                         <div>
                             <div style="font-weight: 600; color: #1e293b;">${f.furniture_name || 'Product'}</div>
                             <div style="font-size: 11px; color: #64748b;">${s.structure_name || ''} - ${s.colour || ''}</div>
@@ -195,23 +195,74 @@ async function openOrderDetail(order) {
     }
 }
 
-// (handleStatusChange 和 getStatusStyle 保持不变)
 async function handleStatusChange(event, orderId) {
-    const newStatus = event.target.value;
+    const newStatus = event.target.value.toLowerCase();
+    const order = allOrders.find(o => o.order_id === orderId);
+    const oldStatus = (order.status || 'order placed').toLowerCase();
+
     const confirmUpdate = confirm(`Change status to "${newStatus.toUpperCase()}"?`);
     if (!confirmUpdate) {
-        const order = allOrders.find(o => o.order_id === orderId);
-        event.target.value = (order.status || 'order placed').toLowerCase();
+        event.target.value = oldStatus; // 恢复下拉框原本的选项
         return;
     }
+    
+    // 禁用下拉框防止重复点击
+    event.target.disabled = true;
+
     try {
+        // 👇 🌟 核心修复：如果管理员改为了 cancelled，且之前不是 cancelled，立刻退还库存 👇
+        if (newStatus === 'cancelled' && oldStatus !== 'cancelled') {
+            console.log(`[Admin] Cancelling order ${orderId}, initiating stock restoration...`);
+            
+            // 1. 查出这个订单里的所有商品
+            const { data: orderItems, error: itemsErr } = await _supabase
+                .from('order_item')
+                .select('structure_id, quantity')
+                .eq('order_id', orderId);
+
+            if (itemsErr) throw itemsErr;
+
+            // 2. 遍历退还库存
+            if (orderItems && orderItems.length > 0) {
+                for (const item of orderItems) {
+                    const { data: liveStruct } = await _supabase
+                        .from('structure')
+                        .select('stock')
+                        .eq('structure_id', item.structure_id)
+                        .single();
+
+                    if (liveStruct) {
+                        const newStock = Number(liveStruct.stock || 0) + Number(item.quantity);
+                        await _supabase
+                            .from('structure')
+                            .update({ stock: newStock })
+                            .eq('structure_id', item.structure_id);
+                        
+                        console.log(`[Admin] Restored ${item.quantity} stock for ${item.structure_id}. New stock: ${newStock}`);
+                    }
+                }
+            }
+        }
+        // 👆 ========================================================================= 👆
+
+        // 更新订单状态
         const { error } = await _supabase.from(TABLE_ORDER).update({ status: newStatus }).eq(COL_ORDER_ID, orderId);
         if (error) throw error;
-        const order = allOrders.find(o => o.order_id === orderId);
+        
+        // 更新本地数据和UI
         if (order) order.status = newStatus;
         event.target.style.cssText = getStatusStyle(newStatus);
+        
+        if (newStatus === 'cancelled') {
+            alert("Order cancelled successfully. Stock has been restored.");
+        }
+
     } catch (err) {
-        alert("Update failed.");
+        console.error("Status Update Error:", err);
+        alert("Update failed. Please check the console for details.");
+        event.target.value = oldStatus; // 失败时恢复下拉框
+    } finally {
+        event.target.disabled = false;
     }
 }
 
